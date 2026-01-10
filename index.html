@@ -3,14 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Calorías</title>
+<title>Contador de calorías 2026</title>
 <style>
 body{font-family:Arial;background:#f5f5f5;padding:15px}
-.card{background:#fff;padding:15px;border-radius:10px;margin-bottom:15px}
 h1{text-align:center}
-.big{font-size:26px;text-align:center}
-input,select,button{width:100%;padding:10px;margin-top:8px}
-button{background:#2ecc71;color:#fff;border:none;font-size:16px}
+.card{background:#fff;padding:15px;border-radius:12px;margin-bottom:15px}
+.big{font-size:28px;text-align:center}
+.green{color:#2ecc71}
+.yellow{color:#f1c40f}
+.red{color:#e74c3c}
+select,input,button{width:100%;padding:10px;margin-top:8px;font-size:16px}
+button{background:#2ecc71;color:#fff;border:none;border-radius:8px}
+.item{border-bottom:1px solid #eee;padding:6px 0}
+.small{font-size:14px;color:#555}
+.del{color:red;float:right;cursor:pointer}
 </style>
 </head>
 <body>
@@ -18,40 +24,118 @@ button{background:#2ecc71;color:#fff;border:none;font-size:16px}
 <h1>🔥 Calorías del Día</h1>
 
 <div class="card">
-  <div class="big" id="kcal">0 / 2000 kcal</div>
-  <div id="macros">Proteína: 0 g | Grasas: 0 g | Carbs: 0 g</div>
+  <div id="kcal" class="big green">0 / 2000 kcal</div>
+  <div id="macros" class="small" style="text-align:center">
+    Proteína: 0 g | Grasas: 0 g | Carbs: 0 g
+  </div>
 </div>
 
 <div class="card">
-  <select id="food">
-    <option value="pollo">Pechuga de pollo</option>
-    <option value="huevo">Huevo</option>
-    <option value="tortilla">Tortilla</option>
-  </select>
-  <input type="number" id="qty" placeholder="Cantidad">
-  <button onclick="add()">Agregar</button>
+<select id="food">
+  <option value="">Selecciona alimento</option>
+  <option value="pollo">Pollo</option>
+  <option value="huevo">Huevo</option>
+  <option value="tortilla">Tortilla</option>
+</select>
+
+<select id="pieza" style="display:none">
+  <option value="pechuga">Pechuga</option>
+  <option value="muslo">Muslo</option>
+  <option value="pierna">Pierna</option>
+  <option value="ala">Ala</option>
+</select>
+
+<select id="piel" style="display:none">
+  <option value="sin">Sin piel</option>
+  <option value="con">Con piel</option>
+</select>
+
+<select id="hueso" style="display:none">
+  <option value="sin">Sin hueso</option>
+  <option value="con">Con hueso</option>
+</select>
+
+<input type="number" id="qty" placeholder="Gramos o piezas">
+<button onclick="add()">Agregar</button>
+</div>
+
+<div class="card">
+<h3>📋 Alimentos del día</h3>
+<div id="list"></div>
+<button onclick="resetDay()" style="background:#e74c3c">Nuevo día</button>
 </div>
 
 <script>
-let t=JSON.parse(localStorage.getItem("t"))||{k:0,p:0,g:0,c:0,f:new Date().toDateString()};
-if(t.f!==new Date().toDateString())t={k:0,p:0,g:0,c:0,f:new Date().toDateString()};
+let d = JSON.parse(localStorage.getItem("day")) || {
+  kcal:0,p:0,g:0,c:0,items:[],date:new Date().toDateString()
+};
+
+if(d.date!==new Date().toDateString()){
+  d={kcal:0,p:0,g:0,c:0,items:[],date:new Date().toDateString()};
+}
+
+document.getElementById("food").onchange=()=>{
+  let f=food.value;
+  let show=f==="pollo";
+  pieza.style.display=show?"block":"none";
+  piel.style.display=show?"block":"none";
+  hueso.style.display=show?"block":"none";
+};
 
 function add(){
-let f=document.getElementById("food").value;
-let q=parseFloat(document.getElementById("qty").value);
-if(!q)return;
-let k=0,p=0,g=0,c=0;
-if(f=="pollo"){k=q*1.65;p=q*0.31;g=q*0.036;}
-if(f=="huevo"){k=q*70;p=q*6;g=q*5;}
-if(f=="tortilla"){k=q*60;c=q*15;}
-t.k+=k;t.p+=p;t.g+=g;t.c+=c;
-localStorage.setItem("t",JSON.stringify(t));
-render();
+  let f=food.value;
+  let q=parseFloat(qty.value);
+  if(!f||!q)return;
+
+  let kcal=0,p=0,g=0,c=0,name=f;
+
+  if(f==="pollo"){
+    let base={pechuga:165,muslo:180,pierna:190,ala:220}[pieza.value];
+    kcal=base*q/100;
+    p=31*q/100;
+    g=3.6*q/100;
+    if(piel.value==="con"){kcal+=50*q/100;g+=5*q/100;}
+    if(hueso.value==="con"){kcal*=0.7;p*=0.7;g*=0.7;}
+    name=`Pollo ${pieza.value}`;
+  }
+
+  if(f==="huevo"){kcal=70*q;p=6*q;g=5*q;}
+  if(f==="tortilla"){kcal=60*q;c=15*q;}
+
+  d.kcal+=kcal;d.p+=p;d.g+=g;d.c+=c;
+  d.items.push({name,q,kcal,p,g,c});
+  localStorage.setItem("day",JSON.stringify(d));
+  render();
 }
+
+function del(i){
+  let it=d.items[i];
+  d.kcal-=it.kcal;d.p-=it.p;d.g-=it.g;d.c-=it.c;
+  d.items.splice(i,1);
+  localStorage.setItem("day",JSON.stringify(d));
+  render();
+}
+
+function resetDay(){
+  if(confirm("¿Nuevo día?")){
+    localStorage.removeItem("day");
+    location.reload();
+  }
+}
+
 function render(){
-document.getElementById("kcal").innerText=Math.round(t.k)+" / 2000 kcal";
-document.getElementById("macros").innerText=
-`Proteína: ${Math.round(t.p)} g | Grasas: ${Math.round(t.g)} g | Carbs: ${Math.round(t.c)} g`;
+  let k=document.getElementById("kcal");
+  k.innerText=Math.round(d.kcal)+" / 2000 kcal";
+  k.className="big "+(d.kcal>=2000?"red":d.kcal>=1800?"yellow":"green");
+  macros.innerText=`Proteína: ${Math.round(d.p)} g | Grasas: ${Math.round(d.g)} g | Carbs: ${Math.round(d.c)} g`;
+
+  list.innerHTML="";
+  d.items.forEach((i,x)=>{
+    list.innerHTML+=`<div class="item">
+      ${i.name} (${i.q}) - ${Math.round(i.kcal)} kcal
+      <span class="del" onclick="del(${x})">❌</span>
+    </div>`;
+  });
 }
 render();
 </script>
