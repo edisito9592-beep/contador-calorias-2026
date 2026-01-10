@@ -14,9 +14,12 @@ h1{text-align:center}
 .red{color:#e74c3c}
 select,input,button{width:100%;padding:10px;margin-top:8px;font-size:16px}
 button{background:#2ecc71;color:#fff;border:none;border-radius:8px}
+button.gray{background:#95a5a6}
 .item{border-bottom:1px solid #eee;padding:6px 0}
 .small{font-size:14px;color:#555}
 .del{color:red;float:right;cursor:pointer}
+.row{display:flex;gap:6px}
+.row button{flex:1}
 </style>
 </head>
 <body>
@@ -55,6 +58,32 @@ button{background:#2ecc71;color:#fff;border:none;border-radius:8px}
   <option value="con">Con hueso</option>
 </select>
 
+<select id="prep">
+  <option value="crudo">Crudo / natural</option>
+  <option value="plancha">A la plancha</option>
+  <option value="hervido">Hervido</option>
+  <option value="aceite">Con aceite</option>
+  <option value="frito">Frito</option>
+  <option value="empanizado">Empanizado</option>
+  <option value="rostizado">Rostizado</option>
+  <option value="lenia">A la leña</option>
+</select>
+
+<div id="oilBox" style="display:none">
+  <select id="oilType">
+    <option value="oliva">Aceite de oliva</option>
+    <option value="vegetal">Aceite vegetal</option>
+    <option value="aguacate">Aceite de aguacate</option>
+    <option value="coco">Aceite de coco</option>
+  </select>
+  <input type="number" id="oilGrams" placeholder="Gramos de aceite">
+  <div class="row">
+    <button class="gray" onclick="setOil(5)">5 g</button>
+    <button class="gray" onclick="setOil(10)">10 g</button>
+    <button class="gray" onclick="setOil(20)">20 g</button>
+  </div>
+</div>
+
 <input type="number" id="qty" placeholder="Gramos o piezas">
 <button onclick="add()">Agregar</button>
 </div>
@@ -74,33 +103,42 @@ if(d.date!==new Date().toDateString()){
   d={kcal:0,p:0,g:0,c:0,items:[],date:new Date().toDateString()};
 }
 
-document.getElementById("food").onchange=()=>{
-  let f=food.value;
-  let show=f==="pollo";
+food.onchange=()=>{
+  let show=food.value==="pollo";
   pieza.style.display=show?"block":"none";
   piel.style.display=show?"block":"none";
   hueso.style.display=show?"block":"none";
 };
 
+prep.onchange=()=>{
+  oilBox.style.display=["aceite","frito","empanizado"].includes(prep.value)?"block":"none";
+};
+
+function setOil(g){oilGrams.value=g}
+
 function add(){
-  let f=food.value;
-  let q=parseFloat(qty.value);
+  let f=food.value,q=parseFloat(qty.value);
   if(!f||!q)return;
 
-  let kcal=0,p=0,g=0,c=0,name=f;
+  let kcal=0,p=0,g=0,c=0,name=f+" - "+prep.value;
 
   if(f==="pollo"){
     let base={pechuga:165,muslo:180,pierna:190,ala:220}[pieza.value];
-    kcal=base*q/100;
-    p=31*q/100;
-    g=3.6*q/100;
-    if(piel.value==="con"){kcal+=50*q/100;g+=5*q/100;}
-    if(hueso.value==="con"){kcal*=0.7;p*=0.7;g*=0.7;}
-    name=`Pollo ${pieza.value}`;
+    kcal=base*q/100;p=31*q/100;g=3.6*q/100;
+    if(piel.value==="con"){kcal+=50*q/100;g+=5*q/100}
+    if(hueso.value==="con"){kcal*=0.7;p*=0.7;g*=0.7}
+    name=`Pollo ${pieza.value} (${prep.value})`;
   }
 
-  if(f==="huevo"){kcal=70*q;p=6*q;g=5*q;}
-  if(f==="tortilla"){kcal=60*q;c=15*q;}
+  if(f==="huevo"){kcal=70*q;p=6*q;g=5*q;name=`Huevo (${prep.value})`}
+  if(f==="tortilla"){kcal=60*q;c=15*q;name=`Tortilla (${prep.value})`}
+
+  if(oilBox.style.display==="block"){
+    let og=parseFloat(oilGrams.value)||0;
+    let oilKcal=og*9;
+    kcal+=oilKcal;g+=og;
+    name+=` + aceite ${oilType.value} ${og}g`;
+  }
 
   d.kcal+=kcal;d.p+=p;d.g+=g;d.c+=c;
   d.items.push({name,q,kcal,p,g,c});
@@ -124,17 +162,12 @@ function resetDay(){
 }
 
 function render(){
-  let k=document.getElementById("kcal");
-  k.innerText=Math.round(d.kcal)+" / 2000 kcal";
-  k.className="big "+(d.kcal>=2000?"red":d.kcal>=1800?"yellow":"green");
+  kcal.innerText=Math.round(d.kcal)+" / 2000 kcal";
+  kcal.className="big "+(d.kcal>=2000?"red":d.kcal>=1800?"yellow":"green");
   macros.innerText=`Proteína: ${Math.round(d.p)} g | Grasas: ${Math.round(d.g)} g | Carbs: ${Math.round(d.c)} g`;
-
   list.innerHTML="";
   d.items.forEach((i,x)=>{
-    list.innerHTML+=`<div class="item">
-      ${i.name} (${i.q}) - ${Math.round(i.kcal)} kcal
-      <span class="del" onclick="del(${x})">❌</span>
-    </div>`;
+    list.innerHTML+=`<div class="item">${i.name} - ${Math.round(i.kcal)} kcal <span class="del" onclick="del(${x})">❌</span></div>`;
   });
 }
 render();
