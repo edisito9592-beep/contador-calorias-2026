@@ -3,118 +3,217 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contador de calorías 2026</title>
+<title>Contador de Calorías 2026</title>
 
 <style>
 body{font-family:Arial;background:#f5f5f5;padding:15px}
 h1{text-align:center}
 .card{background:#fff;padding:15px;border-radius:12px;margin-bottom:15px}
-.big{font-size:26px;text-align:center}
+.big{font-size:28px;text-align:center}
 .green{color:#2ecc71}
 .yellow{color:#f1c40f}
 .red{color:#e74c3c}
 select,input,button{width:100%;padding:10px;margin-top:8px;font-size:16px}
 button{background:#2ecc71;color:#fff;border:none;border-radius:8px}
+button.gray{background:#95a5a6}
 .item{border-bottom:1px solid #eee;padding:6px 0}
 .small{font-size:14px;color:#555;text-align:center}
+.del{color:red;float:right;cursor:pointer}
 .bar{height:10px;background:#eee;border-radius:6px;overflow:hidden}
 .bar div{height:100%;background:#2ecc71}
+.row{display:flex;gap:6px}
+.row button{flex:1}
 </style>
 </head>
 
 <body>
 
-<h1>🔥 NutriFit 2026</h1>
+<h1>🔥 Calorías del Día</h1>
+
+<!-- RESUMEN -->
+<div class="card">
+  <div id="kcal" class="big green">0 kcal</div>
+  <div id="macros" class="small">
+    Proteína: 0 g | Grasas: 0 g | Carbs: 0 g
+  </div>
+  <div class="bar"><div id="pbar"></div></div>
+  <div class="small" id="ptext"></div>
+</div>
 
 <!-- DATOS PERSONALES -->
 <div class="card">
 <h3>📏 Datos personales</h3>
-<input id="peso" placeholder="Peso (kg)" type="number">
-<input id="altura" placeholder="Estatura (cm)" type="number">
-<input id="edad" placeholder="Edad" type="number">
+<input id="peso" type="number" placeholder="Peso (kg)">
+<input id="altura" type="number" placeholder="Estatura (cm)">
+<input id="edad" type="number" placeholder="Edad">
 
 <select id="sexo">
-<option value="h">Hombre</option>
-<option value="m">Mujer</option>
+  <option value="h">Hombre</option>
+  <option value="m">Mujer</option>
 </select>
 
 <select id="actividad">
-<option value="1.2">Sedentario</option>
-<option value="1.375">Ligero (1-3 días)</option>
-<option value="1.55">Moderado (3-5 días)</option>
-<option value="1.725">Alto (6-7 días)</option>
+  <option value="1.2">Sedentario</option>
+  <option value="1.375">Ligero (1-3 días)</option>
+  <option value="1.55">Moderado (3-5 días)</option>
+  <option value="1.725">Alto (6-7 días)</option>
 </select>
 
 <select id="tipo">
-<option value="fuerza">Fuerza / pesas</option>
-<option value="cardio">Cardio</option>
-<option value="mixto">Mixto</option>
+  <option value="fuerza">Fuerza / pesas</option>
+  <option value="cardio">Cardio</option>
+  <option value="mixto">Mixto</option>
 </select>
 
 <button onclick="calcObjetivos()">Calcular objetivos</button>
+<div class="small" id="objetivos"></div>
 </div>
 
-<!-- OBJETIVOS -->
+<!-- AGREGAR ALIMENTO -->
 <div class="card">
-<h3>🎯 Objetivos diarios</h3>
-<div class="small" id="objetivos">Aún no calculados</div>
+<select id="food">
+<option value="">Selecciona alimento</option>
+<option value="pollo">Pollo</option>
+<option value="huevo">Huevo</option>
+<option value="res">Res</option>
+<option value="cerdo">Cerdo</option>
+<option value="arroz">Arroz</option>
+<option value="tortilla">Tortilla</option>
+<option value="pan">Pan</option>
+<option value="avena">Avena</option>
+<option value="queso">Queso</option>
+<option value="whey">Proteína whey</option>
+</select>
+
+<select id="prep">
+<option value="crudo">Crudo</option>
+<option value="plancha">Plancha</option>
+<option value="aceite">Con aceite</option>
+<option value="frito">Frito</option>
+<option value="rostizado">Rostizado</option>
+</select>
+
+<div id="oilBox" style="display:none">
+<input id="oilGrams" type="number" placeholder="Gramos de aceite">
+<div class="row">
+<button class="gray" onclick="setOil(5)">5 g</button>
+<button class="gray" onclick="setOil(10)">10 g</button>
+</div>
 </div>
 
-<!-- CONSUMO -->
+<input id="qty" type="number" placeholder="Cantidad (g o piezas)">
+<button onclick="add()">Agregar</button>
+</div>
+
+<!-- LISTA -->
 <div class="card">
-<div id="kcal" class="big green">0 kcal</div>
-<div class="small" id="macros">Proteína: 0 g</div>
-<div class="bar"><div id="pbar"></div></div>
+<h3>📋 Alimentos del día</h3>
+<div id="list"></div>
+<button onclick="resetDay()" style="background:#e74c3c">Nuevo día</button>
 </div>
 
 <script>
+/* ===== BASE ===== */
+let base100={
+pollo:[165,31,3.6,0],
+huevo:[155,13,11,1],
+res:[250,26,20,0],
+cerdo:[242,27,14,0],
+arroz:[130,2.5,0.3,28],
+avena:[389,17,7,66],
+pan:[265,9,3,49],
+queso:[280,18,22,3],
+whey:[400,80,7,8]
+};
+
+let day=JSON.parse(localStorage.getItem("day"))||{
+kcal:0,p:0,g:0,c:0,items:[],date:new Date().toDateString()
+};
+if(day.date!==new Date().toDateString()){
+day={kcal:0,p:0,g:0,c:0,items:[],date:new Date().toDateString()};
+}
+
 let objetivos=JSON.parse(localStorage.getItem("objetivos"))||{};
-let consumo=JSON.parse(localStorage.getItem("consumo"))||{kcal:0,p:0};
 
+/* ===== OBJETIVOS ===== */
 function calcObjetivos(){
-  let peso=+document.getElementById("peso").value;
-  let alt=+document.getElementById("altura").value;
-  let edad=+document.getElementById("edad").value;
-  let sexo=document.getElementById("sexo").value;
-  let act=+document.getElementById("actividad").value;
-  let tipo=document.getElementById("tipo").value;
+let peso=+pesoInput.value||+peso.value;
+let alt=+altura.value;
+let ed=+edad.value;
+let sx=sexo.value;
+let act=+actividad.value;
+let tipoE=tipo.value;
 
-  if(!peso||!alt||!edad)return;
+let tmb=sx==="h"
+?10*peso+6.25*alt-5*ed+5
+:10*peso+6.25*alt-5*ed-161;
 
-  let tmb=sexo==="h"
-    ?10*peso+6.25*alt-5*edad+5
-    :10*peso+6.25*alt-5*edad-161;
-
-  let mantenimiento=Math.round(tmb*act);
-  let deficit=mantenimiento-400;
-  let volumen=mantenimiento+300;
-
-  let prot=peso*(tipo==="fuerza"?2.2:2);
-
-  objetivos={mantenimiento,deficit,volumen,prot};
-  localStorage.setItem("objetivos",JSON.stringify(objetivos));
-
-  renderObjetivos();
+let mant=Math.round(tmb*act);
+objetivos={
+mant,
+def:mant-400,
+vol:mant+300,
+prot:peso*(tipoE==="fuerza"?2.2:2)
+};
+localStorage.setItem("objetivos",JSON.stringify(objetivos));
+renderObjetivos();
+render();
 }
 
 function renderObjetivos(){
-  if(!objetivos.mantenimiento)return;
-  document.getElementById("objetivos").innerHTML=
-  `🔥 Mantenimiento: <b>${objetivos.mantenimiento}</b> kcal<br>
-   🔴 Déficit: <b>${objetivos.deficit}</b> kcal<br>
-   🟢 Volumen limpio: <b>${objetivos.volumen}</b> kcal<br>
-   💪 Proteína objetivo: <b>${Math.round(objetivos.prot)}</b> g`;
+if(!objetivos.mant)return;
+objetivosDiv.innerHTML=
+`🔥 Mantenimiento: <b>${objetivos.mant}</b> kcal<br>
+🔴 Déficit: <b>${objetivos.def}</b> kcal<br>
+🟢 Volumen: <b>${objetivos.vol}</b> kcal<br>
+💪 Proteína objetivo: <b>${Math.round(objetivos.prot)}</b> g`;
 }
 
-function renderConsumo(){
-  kcal.innerText=Math.round(consumo.kcal)+" kcal";
-  macros.innerText=`Proteína: ${Math.round(consumo.p)} / ${Math.round(objetivos.prot||0)} g`;
-  let pct=Math.min(100,(consumo.p/(objetivos.prot||1))*100);
-  pbar.style.width=pct+"%";
+/* ===== COMIDA ===== */
+prep.onchange=()=>oilBox.style.display=["aceite","frito"].includes(prep.value)?"block":"none";
+function setOil(g){oilGrams.value=g}
+
+function add(){
+let f=food.value,q=+qty.value;if(!f||!q)return;
+let [k,p,g,c]=base100[f];
+let kcal=k*q/100,pr=p*q/100,gr=g*q/100,ca=c*q/100;
+
+if(oilBox.style.display==="block"){
+let og=+oilGrams.value||0;
+kcal+=og*9;gr+=og;
+}
+
+day.kcal+=kcal;day.p+=pr;day.g+=gr;day.c+=ca;
+day.items.push({name:food.options[food.selectedIndex].text,kcal});
+localStorage.setItem("day",JSON.stringify(day));
+render();
+}
+
+function resetDay(){
+if(confirm("¿Nuevo día?")){
+localStorage.removeItem("day");
+location.reload();
+}
+}
+
+/* ===== RENDER ===== */
+function render(){
+kcal.innerText=Math.round(day.kcal)+" kcal";
+macros.innerText=`Proteína: ${Math.round(day.p)} g | Grasas: ${Math.round(day.g)} g | Carbs: ${Math.round(day.c)} g`;
+
+let goal=objetivos.prot||1;
+let pct=Math.min(100,(day.p/goal)*100);
+pbar.style.width=pct+"%";
+ptext.innerText=`Proteína: ${Math.round(day.p)} / ${Math.round(goal)} g`;
+
+list.innerHTML="";
+day.items.forEach((i,x)=>{
+list.innerHTML+=`<div class="item">${i.name} - ${Math.round(i.kcal)} kcal</div>`;
+});
 }
 
 renderObjetivos();
-renderConsumo();
+render();
 </script>
 
 </body>
