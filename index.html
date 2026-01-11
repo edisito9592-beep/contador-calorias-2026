@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contador de calorías 2026</title>
+
 <style>
 body{font-family:Arial;background:#f5f5f5;padding:15px}
 h1{text-align:center}
@@ -22,6 +23,7 @@ button.gray{background:#95a5a6}
 .row button{flex:1}
 </style>
 </head>
+
 <body>
 
 <h1>🔥 Calorías del Día</h1>
@@ -34,6 +36,7 @@ button.gray{background:#95a5a6}
 </div>
 
 <div class="card">
+
 <select id="food">
   <option value="">Selecciona alimento</option>
   <option value="pollo">Pollo</option>
@@ -58,6 +61,11 @@ button.gray{background:#95a5a6}
   <option value="con">Con hueso</option>
 </select>
 
+<select id="tortillaMode" style="display:none">
+  <option value="pieces">Piezas</option>
+  <option value="grams">Gramos</option>
+</select>
+
 <select id="prep">
   <option value="crudo">Crudo / natural</option>
   <option value="plancha">A la plancha</option>
@@ -76,7 +84,9 @@ button.gray{background:#95a5a6}
     <option value="aguacate">Aceite de aguacate</option>
     <option value="coco">Aceite de coco</option>
   </select>
+
   <input type="number" id="oilGrams" placeholder="Gramos de aceite">
+
   <div class="row">
     <button class="gray" onclick="setOil(5)">5 g</button>
     <button class="gray" onclick="setOil(10)">10 g</button>
@@ -84,8 +94,9 @@ button.gray{background:#95a5a6}
   </div>
 </div>
 
-<input type="number" id="qty" placeholder="Gramos o piezas">
+<input type="number" id="qty" placeholder="Cantidad">
 <button onclick="add()">Agregar</button>
+
 </div>
 
 <div class="card">
@@ -94,7 +105,31 @@ button.gray{background:#95a5a6}
 <button onclick="resetDay()" style="background:#e74c3c">Nuevo día</button>
 </div>
 
+<div class="card">
+<h3>🌮 Configurar tortilla</h3>
+<input type="number" id="tCal" placeholder="Calorías por 100 g">
+<input type="number" id="tGram" placeholder="Gramos por pieza">
+<button onclick="saveTortilla()">Guardar tortilla</button>
+</div>
+
 <script>
+/* ===== Configuración tortilla ===== */
+let tortillaConfig = JSON.parse(localStorage.getItem("tortillaConfig")) || {
+  caloriesPer100g: 220,
+  gramsPerPiece: 25
+};
+
+tCal.value = tortillaConfig.caloriesPer100g;
+tGram.value = tortillaConfig.gramsPerPiece;
+
+function saveTortilla(){
+  tortillaConfig.caloriesPer100g = parseFloat(tCal.value);
+  tortillaConfig.gramsPerPiece = parseFloat(tGram.value);
+  localStorage.setItem("tortillaConfig", JSON.stringify(tortillaConfig));
+  alert("Tortilla actualizada ✅");
+}
+
+/* ===== Día ===== */
 let d = JSON.parse(localStorage.getItem("day")) || {
   kcal:0,p:0,g:0,c:0,items:[],date:new Date().toDateString()
 };
@@ -104,10 +139,11 @@ if(d.date!==new Date().toDateString()){
 }
 
 food.onchange=()=>{
-  let show=food.value==="pollo";
-  pieza.style.display=show?"block":"none";
-  piel.style.display=show?"block":"none";
-  hueso.style.display=show?"block":"none";
+  let isPollo = food.value==="pollo";
+  pieza.style.display=isPollo?"block":"none";
+  piel.style.display=isPollo?"block":"none";
+  hueso.style.display=isPollo?"block":"none";
+  tortillaMode.style.display=food.value==="tortilla"?"block":"none";
 };
 
 prep.onchange=()=>{
@@ -116,11 +152,12 @@ prep.onchange=()=>{
 
 function setOil(g){oilGrams.value=g}
 
+/* ===== Agregar alimento ===== */
 function add(){
   let f=food.value,q=parseFloat(qty.value);
   if(!f||!q)return;
 
-  let kcal=0,p=0,g=0,c=0,name=f+" - "+prep.value;
+  let kcal=0,p=0,g=0,c=0,name="";
 
   if(f==="pollo"){
     let base={pechuga:165,muslo:180,pierna:190,ala:220}[pieza.value];
@@ -130,23 +167,35 @@ function add(){
     name=`Pollo ${pieza.value} (${prep.value})`;
   }
 
-  if(f==="huevo"){kcal=70*q;p=6*q;g=5*q;name=`Huevo (${prep.value})`}
-  if(f==="tortilla"){kcal=60*q;c=15*q;name=`Tortilla (${prep.value})`}
+  if(f==="huevo"){
+    kcal=70*q;p=6*q;g=5*q;
+    name=`Huevo (${prep.value})`;
+  }
+
+  if(f==="tortilla"){
+    let grams = tortillaMode.value==="pieces"
+      ? q * tortillaConfig.gramsPerPiece
+      : q;
+
+    kcal = (grams * tortillaConfig.caloriesPer100g) / 100;
+    c = grams * 0.45;
+
+    name=`Tortilla ${tortillaMode.value==="pieces"?q+" pzas":grams+" g"} (${prep.value})`;
+  }
 
   if(oilBox.style.display==="block"){
     let og=parseFloat(oilGrams.value)||0;
-    let oilKcal=og*9;
-    kcal+=oilKcal;g+=og;
+    kcal+=og*9;g+=og;
     name+=` + aceite ${oilType.value} ${og}g`;
   }
 
   d.kcal+=kcal;d.p+=p;d.g+=g;d.c+=c;
-  d.items.push({name,q,kcal,p,g,c});
+  d.items.push({name,kcal,p,g,c});
   localStorage.setItem("day",JSON.stringify(d));
   render();
 }
 
-function del(i){
+function delItem(i){
   let it=d.items[i];
   d.kcal-=it.kcal;d.p-=it.p;d.g-=it.g;d.c-=it.c;
   d.items.splice(i,1);
@@ -167,7 +216,7 @@ function render(){
   macros.innerText=`Proteína: ${Math.round(d.p)} g | Grasas: ${Math.round(d.g)} g | Carbs: ${Math.round(d.c)} g`;
   list.innerHTML="";
   d.items.forEach((i,x)=>{
-    list.innerHTML+=`<div class="item">${i.name} - ${Math.round(i.kcal)} kcal <span class="del" onclick="del(${x})">❌</span></div>`;
+    list.innerHTML+=`<div class="item">${i.name} - ${Math.round(i.kcal)} kcal <span class="del" onclick="delItem(${x})">❌</span></div>`;
   });
 }
 render();
