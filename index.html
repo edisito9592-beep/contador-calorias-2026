@@ -34,7 +34,7 @@ button{
 }
 .resumen{
   text-align:center;
-  font-size:22px;
+  font-size:18px;
 }
 .progress{
   background:#eee;
@@ -46,6 +46,10 @@ button{
 .progress div{
   background:#2ecc71;
   height:100%;
+}
+.macros{
+  font-size:16px;
+  margin-top:5px;
 }
 </style>
 </head>
@@ -93,9 +97,14 @@ button{
 
 <div class="card resumen">
 <p id="kcal">0 kcal</p>
-<p id="prot">Proteína: 0 g</p>
 
-<div class="progress"><div id="barra"></div></div>
+<div class="macros" id="prot">💪 Proteína: 0 g</div>
+<div class="macros" id="carb">🍚 Carbohidratos: 0 g</div>
+<div class="macros" id="gras">🥑 Grasas: 0 g</div>
+
+<div class="progress">
+  <div id="barra"></div>
+</div>
 </div>
 
 <script>
@@ -103,21 +112,21 @@ let totalKcal=0, totalProt=0, totalCarbs=0, totalGrasas=0;
 let objetivoProt=0;
 
 function calcularObjetivos(){
-  const peso=+pesoInput.value;
-  const est=+estatura.value;
+  const pesoVal=+peso.value;
+  const estVal=+estatura.value;
   const edadVal=+edad.value;
   const sexoVal=sexo.value;
   const act=+actividad.value;
 
   let tmb = sexoVal==="Hombre"
-    ? 10*peso + 6.25*est - 5*edadVal + 5
-    : 10*peso + 6.25*est - 5*edadVal - 161;
+    ? 10*pesoVal + 6.25*estVal - 5*edadVal + 5
+    : 10*pesoVal + 6.25*estVal - 5*edadVal - 161;
 
   let mantenimiento=Math.round(tmb*act);
   let deficit=mantenimiento-400;
   let volumen=mantenimiento+300;
 
-  objetivoProt=Math.round(peso*2.2);
+  objetivoProt=Math.round(pesoVal*2.2);
 
   objetivos.innerHTML=`
 🔥 Mantenimiento: <b>${mantenimiento} kcal</b><br>
@@ -134,7 +143,9 @@ function agregar(){
   totalGrasas+=+grasas.value;
 
   kcal.textContent=totalKcal+" kcal";
-  prot.textContent=`Proteína: ${totalProt} / ${objetivoProt} g`;
+  prot.textContent=`💪 Proteína: ${totalProt} / ${objetivoProt} g`;
+  carb.textContent=`🍚 Carbohidratos: ${totalCarbs} g`;
+  gras.textContent=`🥑 Grasas: ${totalGrasas} g`;
 
   let pct=Math.min((totalProt/objetivoProt)*100,100);
   barra.style.width=pct+"%";
