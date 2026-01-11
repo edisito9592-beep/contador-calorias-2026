@@ -39,9 +39,31 @@ button.gray{background:#95a5a6}
 
 <select id="food">
   <option value="">Selecciona alimento</option>
-  <option value="pollo">Pollo</option>
-  <option value="huevo">Huevo</option>
-  <option value="tortilla">Tortilla</option>
+
+  <optgroup label="Proteínas">
+    <option value="pollo">Pollo</option>
+    <option value="huevo">Huevo</option>
+    <option value="res">Carne de res</option>
+    <option value="cerdo">Carne de cerdo</option>
+    <option value="pescado">Pescado</option>
+    <option value="atun">Atún</option>
+    <option value="jamon">Jamón</option>
+    <option value="queso">Queso</option>
+  </optgroup>
+
+  <optgroup label="Carbohidratos">
+    <option value="tortilla">Tortilla</option>
+    <option value="arroz">Arroz</option>
+    <option value="frijol">Frijoles</option>
+    <option value="avena">Avena</option>
+    <option value="pan">Pan</option>
+    <option value="pasta">Pasta</option>
+  </optgroup>
+
+  <optgroup label="Lácteos">
+    <option value="leche">Leche</option>
+    <option value="yogurt">Yogurt natural</option>
+  </optgroup>
 </select>
 
 <select id="pieza" style="display:none">
@@ -84,9 +106,7 @@ button.gray{background:#95a5a6}
     <option value="aguacate">Aceite de aguacate</option>
     <option value="coco">Aceite de coco</option>
   </select>
-
   <input type="number" id="oilGrams" placeholder="Gramos de aceite">
-
   <div class="row">
     <button class="gray" onclick="setOil(5)">5 g</button>
     <button class="gray" onclick="setOil(10)">10 g</button>
@@ -94,7 +114,7 @@ button.gray{background:#95a5a6}
   </div>
 </div>
 
-<input type="number" id="qty" placeholder="Cantidad">
+<input type="number" id="qty" placeholder="Cantidad (g o piezas)">
 <button onclick="add()">Agregar</button>
 
 </div>
@@ -113,36 +133,32 @@ button.gray{background:#95a5a6}
 </div>
 
 <script>
-/* ===== Configuración tortilla ===== */
+/* ==== Config tortilla ==== */
 let tortillaConfig = JSON.parse(localStorage.getItem("tortillaConfig")) || {
-  caloriesPer100g: 220,
-  gramsPerPiece: 25
+  caloriesPer100g:220,
+  gramsPerPiece:25
 };
-
-tCal.value = tortillaConfig.caloriesPer100g;
-tGram.value = tortillaConfig.gramsPerPiece;
+tCal.value=tortillaConfig.caloriesPer100g;
+tGram.value=tortillaConfig.gramsPerPiece;
 
 function saveTortilla(){
-  tortillaConfig.caloriesPer100g = parseFloat(tCal.value);
-  tortillaConfig.gramsPerPiece = parseFloat(tGram.value);
-  localStorage.setItem("tortillaConfig", JSON.stringify(tortillaConfig));
+  tortillaConfig.caloriesPer100g=parseFloat(tCal.value);
+  tortillaConfig.gramsPerPiece=parseFloat(tGram.value);
+  localStorage.setItem("tortillaConfig",JSON.stringify(tortillaConfig));
   alert("Tortilla actualizada ✅");
 }
 
-/* ===== Día ===== */
+/* ==== Día ==== */
 let d = JSON.parse(localStorage.getItem("day")) || {
   kcal:0,p:0,g:0,c:0,items:[],date:new Date().toDateString()
 };
-
 if(d.date!==new Date().toDateString()){
   d={kcal:0,p:0,g:0,c:0,items:[],date:new Date().toDateString()};
 }
 
 food.onchange=()=>{
-  let isPollo = food.value==="pollo";
-  pieza.style.display=isPollo?"block":"none";
-  piel.style.display=isPollo?"block":"none";
-  hueso.style.display=isPollo?"block":"none";
+  let isPollo=food.value==="pollo";
+  pieza.style.display=piel.style.display=hueso.style.display=isPollo?"block":"none";
   tortillaMode.style.display=food.value==="tortilla"?"block":"none";
 };
 
@@ -152,41 +168,55 @@ prep.onchange=()=>{
 
 function setOil(g){oilGrams.value=g}
 
-/* ===== Agregar alimento ===== */
+/* ==== Agregar ==== */
 function add(){
   let f=food.value,q=parseFloat(qty.value);
   if(!f||!q)return;
 
   let kcal=0,p=0,g=0,c=0,name="";
 
+  let base100={
+    res:[250,26,20,0],
+    cerdo:[242,27,14,0],
+    pescado:[120,22,2,0],
+    atun:[116,26,1,0],
+    jamon:[145,21,5,2],
+    queso:[280,18,22,3],
+    arroz:[130,2.5,0.3,28],
+    frijol:[130,9,0.5,23],
+    avena:[389,17,7,66],
+    pan:[265,9,3,49],
+    pasta:[131,5,1,25],
+    leche:[42,3.4,1,5],
+    yogurt:[59,10,0.4,3.6]
+  };
+
   if(f==="pollo"){
     let base={pechuga:165,muslo:180,pierna:190,ala:220}[pieza.value];
     kcal=base*q/100;p=31*q/100;g=3.6*q/100;
     if(piel.value==="con"){kcal+=50*q/100;g+=5*q/100}
     if(hueso.value==="con"){kcal*=0.7;p*=0.7;g*=0.7}
-    name=`Pollo ${pieza.value} (${prep.value})`;
+    name=`Pollo ${pieza.value}`;
+  } 
+  else if(f==="huevo"){
+    kcal=70*q;p=6*q;g=5*q;name="Huevo";
   }
-
-  if(f==="huevo"){
-    kcal=70*q;p=6*q;g=5*q;
-    name=`Huevo (${prep.value})`;
+  else if(f==="tortilla"){
+    let grams=tortillaMode.value==="pieces"?q*tortillaConfig.gramsPerPiece:q;
+    kcal=(grams*tortillaConfig.caloriesPer100g)/100;
+    c=grams*0.45;
+    name=`Tortilla ${tortillaMode.value==="pieces"?q+" pzas":grams+" g"}`;
   }
-
-  if(f==="tortilla"){
-    let grams = tortillaMode.value==="pieces"
-      ? q * tortillaConfig.gramsPerPiece
-      : q;
-
-    kcal = (grams * tortillaConfig.caloriesPer100g) / 100;
-    c = grams * 0.45;
-
-    name=`Tortilla ${tortillaMode.value==="pieces"?q+" pzas":grams+" g"} (${prep.value})`;
+  else{
+    let [k,pv,gv,cv]=base100[f];
+    kcal=k*q/100;p=pv*q/100;g=gv*q/100;c=cv*q/100;
+    name=food.options[food.selectedIndex].text;
   }
 
   if(oilBox.style.display==="block"){
     let og=parseFloat(oilGrams.value)||0;
     kcal+=og*9;g+=og;
-    name+=` + aceite ${oilType.value} ${og}g`;
+    name+=` + aceite`;
   }
 
   d.kcal+=kcal;d.p+=p;d.g+=g;d.c+=c;
