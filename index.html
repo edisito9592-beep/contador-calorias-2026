@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contador de calorías 2026</title>
+<meta name="theme-color" content="#2ecc71">
 
 <style>
 body{font-family:Arial;background:#f5f5f5;padding:15px}
@@ -19,8 +20,8 @@ button.gray{background:#95a5a6}
 .del{color:red;float:right;cursor:pointer}
 .progress{height:10px;background:#eee;border-radius:10px;overflow:hidden}
 .progress div{height:100%;background:#2ecc71}
-.hidden{display:none}
 .warn{color:#e67e22;font-weight:bold;text-align:center}
+.hidden{display:none}
 </style>
 </head>
 
@@ -35,12 +36,41 @@ button.gray{background:#95a5a6}
   <div class="progress"><div id="pbar"></div></div>
 </div>
 
+<!-- DATOS PERSONALES -->
 <div class="card">
-<h3>🎯 Objetivos</h3>
-<input id="proteinGoal" type="number" placeholder="Objetivo mínimo de proteína (g)">
+<h3>🧍‍♂️ Datos personales</h3>
+<input id="peso" type="number" placeholder="Peso (kg)">
+<input id="altura" type="number" placeholder="Estatura (cm)">
+<input id="edad" type="number" placeholder="Edad">
+<select id="sexo">
+  <option value="h">Hombre</option>
+  <option value="m">Mujer</option>
+</select>
+<select id="actividad">
+  <option value="1.2">Sedentario</option>
+  <option value="1.4">Ligero</option>
+  <option value="1.6">Moderado</option>
+  <option value="1.8">Activo</option>
+</select>
+
+<select id="modo">
+  <option value="mantenimiento">Mantenimiento</option>
+  <option value="deficit">Déficit</option>
+  <option value="volumen">Ganancia muscular</option>
+</select>
+
+<button onclick="calcularObjetivos()">Calcular calorías</button>
+<div id="resultado" class="small"></div>
+</div>
+
+<!-- OBJETIVO PROTEÍNA -->
+<div class="card">
+<h3>🎯 Objetivo de proteína</h3>
+<input id="proteinGoalInput" type="number" placeholder="Proteína objetivo (g)">
 <button onclick="setProteinGoal()">Guardar objetivo</button>
 </div>
 
+<!-- AGREGAR ALIMENTO -->
 <div class="card">
 <h3>🍽️ Agregar alimento</h3>
 
@@ -51,7 +81,6 @@ button.gray{background:#95a5a6}
 <option value="pollo">Pollo</option>
 <option value="res">Carne de res</option>
 <option value="arroz">Arroz</option>
-<option value="aceite">Aceite</option>
 </select>
 
 <div id="eggBox" class="hidden">
@@ -64,16 +93,12 @@ button.gray{background:#95a5a6}
 
 <div id="tortillaBox" class="hidden">
 <input id="torQty" type="number" placeholder="Número de tortillas">
-<input id="torGrams" type="number" placeholder="Gramos por tortilla">
 <input id="torKcal" type="number" placeholder="Calorías por tortilla">
-<button class="gray" onclick="saveTortilla()">⭐ Guardar favorita</button>
-<select id="favTortillas"></select>
 </div>
 
 <input id="qty" type="number" placeholder="Cantidad (g)" class="hidden">
 
 <button onclick="add()">Agregar</button>
-<button class="gray" onclick="startVoice()">🎙️ Voz</button>
 </div>
 
 <div class="card">
@@ -83,19 +108,45 @@ button.gray{background:#95a5a6}
 </div>
 
 <script>
-let objetivoKcal=2000;
-let proteinGoal=Number(localStorage.getItem("proteinGoal"))||0;
+let objetivoKcal = Number(localStorage.getItem("objetivoKcal")) || 2000;
+let proteinGoal = Number(localStorage.getItem("proteinGoal")) || 0;
 
-let d=JSON.parse(localStorage.getItem("day"))||{kcal:0,p:0,fat:0,c:0,items:[]};
-let favT=JSON.parse(localStorage.getItem("favT"))||[];
-
-proteinGoal&& (proteinGoalInput.value=proteinGoal);
+let d = JSON.parse(localStorage.getItem("day")) || {kcal:0,p:0,fat:0,c:0,items:[]};
 
 const base={
  pollo:[165,31,4,0],
  res:[250,26,20,0],
  arroz:[130,2.5,0.3,28]
 };
+
+function calcularObjetivos(){
+ let p=+peso.value,h=+altura.value,e=+edad.value;
+ if(!p||!h||!e)return;
+
+ let bmr = sexo.value==="h"
+   ? 10*p + 6.25*h - 5*e + 5
+   : 10*p + 6.25*h - 5*e - 161;
+
+ let mantenimiento = bmr * +actividad.value;
+
+ if(modo.value==="deficit") objetivoKcal = Math.round(mantenimiento - 400);
+ else if(modo.value==="volumen") objetivoKcal = Math.round(mantenimiento + 300);
+ else objetivoKcal = Math.round(mantenimiento);
+
+ proteinGoal = Math.round(p * 2);
+
+ resultado.innerHTML =
+ `🔥 Mantenimiento: ${Math.round(mantenimiento)} kcal<br>
+ 🎯 Objetivo diario: ${objetivoKcal} kcal<br>
+ 💪 Proteína sugerida: ${proteinGoal} g`;
+
+ proteinGoalInput.value = proteinGoal;
+
+ localStorage.setItem("objetivoKcal",objetivoKcal);
+ localStorage.setItem("proteinGoal",proteinGoal);
+
+ render();
+}
 
 food.onchange=()=>{
  eggBox.classList.add("hidden");
@@ -115,31 +166,29 @@ function add(){
   if(eggMode.value==="pieza"){kcal=70*q;p=6*q;f=5*q;n=`Huevo ${q} pzas`}
   else{kcal=155*q/100;p=13*q/100;f=11*q/100;n=`Huevo ${q} g`}
  }
-
  else if(food.value==="tortilla"){
   let q=+torQty.value,k=+torKcal.value;
   if(q<=0||k<=0)return;
   kcal=q*k;c=kcal/4;n=`Tortilla ${q} pzas`;
  }
-
  else{
   let q=+qty.value;if(q<=0)return;
   let b=base[food.value];
   kcal=b[0]*q/100;p=b[1]*q/100;f=b[2]*q/100;c=b[3]*q/100;
-  n=food.value;
+  n=food.options[food.selectedIndex].text;
  }
 
- d.kcal+=kcal;d.p+=p;d.fat+=f;d.c+=c;
+ d.kcal+=kcal; d.p+=p; d.fat+=f; d.c+=c;
  d.items.push({n,kcal,p,f,c});
  localStorage.setItem("day",JSON.stringify(d));
- clear();render();
+ clear(); render();
 }
 
 function render(){
  kcal.innerText=`${Math.round(d.kcal)} / ${objetivoKcal} kcal`;
  macros.innerText=`Proteína: ${Math.round(d.p)} g | Grasas: ${Math.round(d.fat)} g | Carbs: ${Math.round(d.c)} g`;
  pbar.style.width=Math.min(100,(d.kcal/objetivoKcal)*100)+"%";
- proteinWarn.classList.toggle("hidden",!(proteinGoal&&d.p<proteinGoal));
+ proteinWarn.classList.toggle("hidden",!(proteinGoal && d.p < proteinGoal));
  list.innerHTML=d.items.map((i,x)=>`
  <div class="item">${i.n} - ${Math.round(i.kcal)} kcal
  <div class="small">P:${Math.round(i.p)} G:${Math.round(i.f)} C:${Math.round(i.c)}</div>
@@ -148,45 +197,22 @@ function render(){
 
 function del(i){
  let it=d.items[i];
- d.kcal-=it.kcal;d.p-=it.p;d.fat-=it.f;d.c-=it.c;
+ d.kcal-=it.kcal; d.p-=it.p; d.fat-=it.f; d.c-=it.c;
  d.items.splice(i,1);
  localStorage.setItem("day",JSON.stringify(d));
  render();
 }
 
-function resetDay(){localStorage.removeItem("day");location.reload()}
-
-function clear(){eggQty.value=torQty.value=torGrams.value=torKcal.value=qty.value=""}
-
-function setProteinGoal(){
- proteinGoal=+proteinGoalInput.value;
- localStorage.setItem("proteinGoal",proteinGoal);
- render();
+function resetDay(){
+ localStorage.removeItem("day");
+ location.reload();
 }
 
-function saveTortilla(){
- favT.push({k:torKcal.value});
- localStorage.setItem("favT",JSON.stringify(favT));
- loadFav();
+function clear(){
+ eggQty.value=torQty.value=torKcal.value=qty.value="";
 }
 
-function loadFav(){
- favTortillas.innerHTML=favT.map((f,i)=>`<option value="${i}">${f.k} kcal</option>`).join("");
-}
-favTortillas.onchange=()=>torKcal.value=favT[favTortillas.value].k;
-
-function startVoice(){
- let r=new webkitSpeechRecognition();
- r.lang="es-MX";
- r.onresult=e=>{
-  let t=e.results[0][0].transcript.toLowerCase();
-  if(t.includes("huevo"))food.value="huevo";
-  if(t.includes("tortilla"))food.value="tortilla";
- };
- r.start();
-}
-
-loadFav();render();
+render();
 </script>
 
 </body>
